@@ -134,6 +134,28 @@ describe('CLI integration', () => {
     expect(enrichRecord).toHaveBeenCalled();
   });
 
+  it('returns stale cache records when all sources return empty', async () => {
+    const staleRecord = {
+      name: 'Stale Hack', url: 'https://stale.devpost.com', joinUrl: null,
+      daysLeft: 2, prize: '$500', objective: 'old', eligibilityRaw: 'open to all',
+      badge: 'OPEN', requirements: [], source: 'ddg', pageVisited: true,
+      fetchedAt: '2026-06-20T00:00:00Z',
+    };
+    // Clear any queued mockResolvedValueOnce from prior tests without losing default impl
+    readCache.mockReset();
+    isCacheValid.mockReset();
+    // Restore defaults after reset so subsequent tests still work
+    isCacheValid.mockReturnValue(false);
+    // First readCache() call: returns null → isCacheValid check fails → proceeds to search
+    // Second readCache() call: returns stale data after searchHackathons returns []
+    readCache.mockResolvedValueOnce(null);
+    searchHackathons.mockResolvedValueOnce([]);
+    readCache.mockResolvedValueOnce({ records: [staleRecord], fetchedAt: '2026-06-20T00:00:00Z' });
+    const records = await runPipeline({ noCache: false });
+    expect(records).toHaveLength(1);
+    expect(records[0].name).toBe('Stale Hack');
+  });
+
   // ------------------------------------------------------------------
   // --open-only filtering — verifiable in-process
   // ------------------------------------------------------------------

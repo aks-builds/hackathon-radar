@@ -105,6 +105,10 @@ async function watch(intervalMs) {
     const records = await runPipeline({ noCache: true });
     const toShow = flags['open-only'] ? records.filter(r => r.badge === 'OPEN') : records;
 
+    if (isFirst && !toShow.length) {
+      if (!flags.quiet) process.stderr.write('hackathon-radar: no results match current filters\n');
+    }
+
     if (isFirst) {
       process.stdout.write(renderLog(toShow, { quiet: flags.quiet }) + '\n');
       seenRecords = seenRecords.concat(toShow);
