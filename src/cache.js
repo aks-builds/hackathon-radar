@@ -8,7 +8,8 @@ const DEFAULT_TTL_MS = 3600000; // 1 hour
 
 function getTTL() {
   const override = process.env.HACKATHON_RADAR_CACHE_TTL_MS;
-  return override ? parseInt(override, 10) : DEFAULT_TTL_MS;
+  const ttl = override ? parseInt(override, 10) : DEFAULT_TTL_MS;
+  return isNaN(ttl) ? DEFAULT_TTL_MS : ttl;
 }
 
 /**
