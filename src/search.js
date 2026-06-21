@@ -1,5 +1,4 @@
 import { search as ddgSearch, SafeSearchType } from 'duck-duck-scrape';
-import { parseDaysLeft } from './filter.js';
 
 function mapDDGResult(r) {
   return {
@@ -8,6 +7,7 @@ function mapDDGResult(r) {
     joinUrl: null,
     publishedAt: null,
     deadlineAt: null,
+    // daysLeft populated by enrich step after page fetch
     daysLeft: null,
     prize: extractPrize(r.description),
     objective: null,
