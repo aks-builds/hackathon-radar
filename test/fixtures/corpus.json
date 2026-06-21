@@ -1,0 +1,13 @@
+[
+  { "text": "open to all developers worldwide", "badge": "OPEN" },
+  { "text": "anyone can participate, no prerequisites", "badge": "OPEN" },
+  { "text": "students only, must be enrolled in a university", "badge": "GATED" },
+  { "text": "participants must be 18+ and pass KYC verification", "badge": "GATED" },
+  { "text": "invite-only hackathon for selected teams", "badge": "GATED" },
+  { "text": "membership required to register", "badge": "GATED" },
+  { "text": "college students and university students welcome", "badge": "GATED" },
+  { "text": "18+ preferred, solo or team of 2-4", "badge": "PARTIAL" },
+  { "text": "recommended experience in web development", "badge": "PARTIAL" },
+  { "text": "build projects and win prizes", "badge": "UNKNOWN" },
+  { "text": "", "badge": "UNKNOWN" }
+]
