@@ -3,7 +3,7 @@ import { parseArgs } from 'node:util';
 import { searchHackathons } from '../src/search.js';
 import { filterRecords, deduplicateByUrl } from '../src/filter.js';
 import { enrichRecord } from '../src/enrich.js';
-import { readCache, writeCache, isCacheValid } from '../src/cache.js';
+import { readCache, writeCache, isCacheValid, diffResults } from '../src/cache.js';
 import { renderLog, renderJson } from '../src/output.js';
 
 const { values: flags } = parseArgs({
@@ -51,7 +51,15 @@ export async function runPipeline({ noCache = false } = {}) {
 
   // Search
   const raw = await searchHackathons(year);
-  if (!raw.length) return [];
+  if (!raw.length) {
+    // All live sources failed — serve stale cache as last resort
+    const stale = await readCache();
+    if (stale?.records?.length) {
+      process.stderr.write('hackathon-radar: all sources failed — serving stale cache\n');
+      return stale.records;
+    }
+    return [];
+  }
 
   // Filter + dedup
   const filtered = deduplicateByUrl(filterRecords(raw, { minDays }));
@@ -77,6 +85,11 @@ async function once() {
 
   const shown = flags['open-only'] ? records.filter(r => r.badge === 'OPEN') : records;
 
+  if (!shown.length && flags['open-only']) {
+    process.stderr.write('hackathon-radar: no open-to-all hackathons found in current results\n');
+    process.exit(0); // Not an error — just none that match the filter
+  }
+
   if (flags.json) {
     process.stdout.write(renderJson(shown) + '\n');
   } else {
@@ -86,7 +99,7 @@ async function once() {
 
 async function watch(intervalMs) {
   if (!flags.quiet) console.log(`hackathon-radar watching · polling every ${flags.watch} · Ctrl+C to stop\n`);
-  let cachedUrls = new Set();
+  let seenRecords = [];
 
   async function poll(isFirst) {
     const records = await runPipeline({ noCache: true });
@@ -94,15 +107,15 @@ async function watch(intervalMs) {
 
     if (isFirst) {
       process.stdout.write(renderLog(toShow, { quiet: flags.quiet }) + '\n');
-      toShow.forEach(r => cachedUrls.add(r.url));
+      seenRecords = seenRecords.concat(toShow);
     } else {
-      const newOnes = toShow.filter(r => !cachedUrls.has(r.url));
+      const newOnes = diffResults(toShow, seenRecords);
       if (newOnes.length) {
         console.log(`[${new Date().toISOString()}] ${newOnes.length} new found`);
         newOnes.forEach(r => {
           process.stdout.write(`NEW ✨\n${renderLog([r], { quiet: true })}\n`);
-          cachedUrls.add(r.url);
         });
+        seenRecords = seenRecords.concat(newOnes);
       } else if (!flags.quiet) {
         console.log(`[${new Date().toISOString()}] polling · no new hackathons · next in ${flags.watch}`);
       }
