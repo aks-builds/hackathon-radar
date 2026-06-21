@@ -29,3 +29,4 @@ hackathon-radar --min-days 7     # only hackathons with ≥7 days left
 | `--watch <interval>` | off | Poll mode (`30m`, `1h`) |
 | `--no-cache` | off | Force fresh fetch |
 | `--quiet` | off | Suppress status lines |
+| `--version` | — | Print version and exit |

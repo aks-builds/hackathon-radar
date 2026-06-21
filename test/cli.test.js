@@ -137,7 +137,7 @@ describe('CLI integration', () => {
   it('returns stale cache records when all sources return empty', async () => {
     const staleRecord = {
       name: 'Stale Hack', url: 'https://stale.devpost.com', joinUrl: null,
-      daysLeft: 2, prize: '$500', objective: 'old', eligibilityRaw: 'open to all',
+      daysLeft: 10, prize: '$500', objective: 'old', eligibilityRaw: 'open to all',
       badge: 'OPEN', requirements: [], source: 'ddg', pageVisited: true,
       fetchedAt: '2026-06-20T00:00:00Z',
     };

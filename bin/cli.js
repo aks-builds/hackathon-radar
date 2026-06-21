@@ -30,13 +30,14 @@ if (flags.version) {
 
 const minDays = parseInt(flags['min-days'], 10) || 3;
 const limit = parseInt(flags.limit, 10) || 20;
-const watchInterval = flags.watch ? parseWatchInterval(flags.watch) : null;
 
 function parseWatchInterval(str) {
   const match = str.match(/^(\d+)(m|h)$/);
   if (!match) return null;
   return parseInt(match[1]) * (match[2] === 'h' ? 3600000 : 60000);
 }
+
+const watchInterval = flags.watch ? parseWatchInterval(flags.watch) : null;
 
 export async function runPipeline({ noCache = false } = {}) {
   const year = new Date().getFullYear();
@@ -45,7 +46,7 @@ export async function runPipeline({ noCache = false } = {}) {
   if (!noCache) {
     const cached = await readCache();
     if (cached && isCacheValid(cached.fetchedAt)) {
-      return cached.records;
+      return filterRecords(cached.records, { minDays }).slice(0, limit);
     }
   }
 
@@ -56,7 +57,7 @@ export async function runPipeline({ noCache = false } = {}) {
     const stale = await readCache();
     if (stale?.records?.length) {
       process.stderr.write('hackathon-radar: all sources failed — serving stale cache\n');
-      return stale.records;
+      return filterRecords(stale.records, { minDays }).slice(0, limit);
     }
     return [];
   }
@@ -86,6 +87,7 @@ async function once() {
   const shown = flags['open-only'] ? records.filter(r => r.badge === 'OPEN') : records;
 
   if (!shown.length && flags['open-only']) {
+    if (flags.json) process.stdout.write('[]\n');
     process.stderr.write('hackathon-radar: no open-to-all hackathons found in current results\n');
     process.exit(0); // Not an error — just none that match the filter
   }
@@ -98,6 +100,10 @@ async function once() {
 }
 
 async function watch(intervalMs) {
+  if (flags.json) {
+    process.stderr.write('hackathon-radar: --watch and --json are incompatible; use cron + --json for scripted polling\n');
+    process.exit(1);
+  }
   if (!flags.quiet) console.log(`hackathon-radar watching · polling every ${flags.watch} · Ctrl+C to stop\n`);
   let seenRecords = [];
 
