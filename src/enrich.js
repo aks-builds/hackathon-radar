@@ -67,10 +67,10 @@ export async function enrichRecord(record) {
     'p:contains("prize")', 'span:contains("$")',
   ]) ?? record.prize;
 
-  const objective = extractText($, [
-    '.about p', '.description p', 'meta[name="description"]',
-    'section:contains("About") p',
-  ]) ?? record.objective;
+  const objective =
+    extractText($, ['.about p', '.description p', 'section:contains("About") p']) ??
+    ($('meta[name="description"]').attr('content')?.trim() || null) ??
+    record.objective;
 
   const joinUrl = extractJoinUrl($, record.url) ?? record.joinUrl;
 

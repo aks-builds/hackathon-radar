@@ -52,4 +52,22 @@ describe('enrichRecord', () => {
     expect(result.prize).toBe('$999');
     expect(result.objective).toBe('win');
   });
+
+  it('extracts badge PARTIAL from partial fixture', async () => {
+    const html = await readFile(fixturePath('partial.html'), 'utf8');
+    fetch.mockResolvedValueOnce({ ok: true, text: async () => html });
+    const record = { url: 'https://devfest.example.com', prize: null, objective: null, eligibilityRaw: null, joinUrl: null };
+    const result = await enrichRecord(record);
+    expect(result.pageVisited).toBe(true);
+    expect(result.badge).toBe('PARTIAL');
+  });
+
+  it('returns UNKNOWN badge for page with no eligibility text', async () => {
+    const html = await readFile(fixturePath('unknown.html'), 'utf8');
+    fetch.mockResolvedValueOnce({ ok: true, text: async () => html });
+    const record = { url: 'https://mysteryhack.example.com', prize: null, objective: null, eligibilityRaw: null, joinUrl: null };
+    const result = await enrichRecord(record);
+    expect(result.pageVisited).toBe(true);
+    expect(result.badge).toBe('UNKNOWN');
+  });
 });
