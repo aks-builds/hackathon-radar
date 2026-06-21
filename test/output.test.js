@@ -71,6 +71,30 @@ describe('renderJson', () => {
     expect(parsed[0].name).toBe('Open');
     expect(parsed[1].name).toBe('Gated');
   });
+
+  it('sorts all four badge levels correctly', () => {
+    const records = [
+      makeRecord({ badge: 'UNKNOWN', name: 'Unknown' }),
+      makeRecord({ badge: 'GATED', name: 'Gated' }),
+      makeRecord({ badge: 'PARTIAL', name: 'Partial' }),
+      makeRecord({ badge: 'OPEN', name: 'Open' }),
+    ];
+    const parsed = JSON.parse(renderJson(records));
+    expect(parsed[0].name).toBe('Open');
+    expect(parsed[1].name).toBe('Partial');
+    expect(parsed[2].name).toBe('Gated');
+    expect(parsed[3].name).toBe('Unknown');
+  });
+
+  it('sorts PARTIAL before GATED', () => {
+    const records = [
+      makeRecord({ badge: 'GATED', name: 'Gated' }),
+      makeRecord({ badge: 'PARTIAL', name: 'Partial' }),
+    ];
+    const parsed = JSON.parse(renderJson(records));
+    expect(parsed[0].name).toBe('Partial');
+    expect(parsed[1].name).toBe('Gated');
+  });
 });
 
 describe('renderSummaryLine', () => {
