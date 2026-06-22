@@ -19,8 +19,7 @@ export function createProgress({ quiet = false, isTTY = false } = {}) {
   }
 
   function stop() {
-    if (timer) { clearInterval(timer); timer = null; }
-    process.stderr.write('\r\x1b[K');
+    if (timer) { clearInterval(timer); timer = null; process.stderr.write('\r\x1b[K'); }
   }
 
   return {
