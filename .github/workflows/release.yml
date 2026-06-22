@@ -55,7 +55,7 @@ jobs:
         run: |
           BRANCH="release/${{ steps.bump.outputs.version }}"
           git checkout -b "$BRANCH"
-          git add package.json CHANGELOG.md
+          git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: release v${{ steps.bump.outputs.version }}"
           git push origin "$BRANCH"
 
