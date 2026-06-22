@@ -53,6 +53,53 @@ describe('renderLog', () => {
     const out = renderLog([makeRecord({ badge: 'GATED', requirements: ['kyc'] })], { quiet: true });
     expect(out).toContain('kyc');
   });
+
+  it('shows objective on line 3 for OPEN entries', () => {
+    const out = renderLog([makeRecord({ badge: 'OPEN', objective: 'Build climate tools' })], { quiet: true });
+    expect(out).toContain('Build climate tools');
+  });
+
+  it('shows requirements on line 3 for GATED, not objective', () => {
+    const out = renderLog([makeRecord({ badge: 'GATED', requirements: ['18+'], objective: 'Build things' })], { quiet: true });
+    expect(out).toContain('⚠ Requirements: 18+');
+    expect(out).not.toContain('Build things');
+  });
+
+  it('shows requirements on line 3 for PARTIAL', () => {
+    const out = renderLog([makeRecord({ badge: 'PARTIAL', requirements: ['team of 2-4'] })], { quiet: true });
+    expect(out).toContain('⚠ Requirements: team of 2-4');
+  });
+
+  it('has no line 3 for UNKNOWN badge', () => {
+    const out = renderLog([makeRecord({ badge: 'UNKNOWN', requirements: [], objective: null })], { quiet: true });
+    const lines = out.trim().split('\n').filter(l => l.trim());
+    expect(lines.length).toBeLessThanOrEqual(3); // name line + url line + summary line
+  });
+
+  it('suppresses summary line when quiet is true', () => {
+    const out = renderLog([makeRecord()], { quiet: true });
+    expect(out).not.toContain('found');
+    expect(out).not.toContain('cached 1h');
+  });
+
+  it('shows summary line when quiet is false', () => {
+    const out = renderLog([makeRecord()], { quiet: false });
+    expect(out).toContain('found');
+  });
+
+  it('truncates prize at 60 chars', () => {
+    const longPrize = '$' + '1'.repeat(200);
+    const out = renderLog([makeRecord({ prize: longPrize })], { quiet: true });
+    const prizeInOut = out.split('\n').find(l => l.includes('$'));
+    expect(prizeInOut).toBeDefined();
+    expect(prizeInOut.length).toBeLessThan(300);
+    expect(out).toContain('…');
+  });
+
+  it('does not print eligibilityRaw in log output', () => {
+    const out = renderLog([makeRecord({ badge: 'OPEN', eligibilityRaw: 'UNIQUE_ELIG_STRING_12345' })], { quiet: true });
+    expect(out).not.toContain('UNIQUE_ELIG_STRING_12345');
+  });
 });
 
 describe('renderJson', () => {

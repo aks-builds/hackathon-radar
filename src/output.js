@@ -5,25 +5,41 @@ const c = USE_COLOUR ? chalk : new Proxy({}, { get: () => (s) => s });
 
 const BADGE_ORDER = { OPEN: 0, PARTIAL: 1, GATED: 2, UNKNOWN: 3 };
 
+function trunc(text, max) {
+  if (!text) return text;
+  return text.length > max ? text.slice(0, max) + '…' : text;
+}
+
+function badgeEmoji(badge) {
+  switch (badge) {
+    case 'OPEN':    return '🟢';
+    case 'GATED':   return '🔴';
+    case 'PARTIAL': return '🟡';
+    default:        return '⚪';
+  }
+}
+
 function badgeLabel(badge) {
   switch (badge) {
-    case 'OPEN':    return c.green('🟢 OPEN TO ALL');
-    case 'GATED':   return c.red('🔴 GATED');
-    case 'PARTIAL': return c.yellow('🟡 PARTIAL');
-    default:        return '⚪ UNKNOWN';
+    case 'OPEN':    return c.green('OPEN TO ALL');
+    case 'GATED':   return c.red('GATED');
+    case 'PARTIAL': return c.yellow('PARTIAL');
+    default:        return 'UNKNOWN';
   }
 }
 
 function formatRecord(r) {
   const days = r.daysLeft !== null ? `${r.daysLeft}d left` : 'deadline unknown';
-  const prize = r.prize ?? 'no prize listed';
+  const prize = trunc(r.prize, 60) ?? 'no prize listed';
   const lines = [
-    `✅ ${c.bold(r.name)} · ${days} · ${c.cyan(prize)} · ${badgeLabel(r.badge)}`,
+    `${badgeEmoji(r.badge)} ${c.bold(r.name)}  ·  ${days}  ·  ${c.cyan(prize)}  ·  ${badgeLabel(r.badge)}`,
     `   ↳ ${r.joinUrl ?? r.url}`,
   ];
-  if (r.objective) lines.push(`   ↳ Objective: ${r.objective}`);
-  if (r.eligibilityRaw && r.badge === 'OPEN') lines.push(`   ↳ Eligibility: ${r.eligibilityRaw}`);
-  if (r.requirements.length > 0) lines.push(`   ↳ ⚠ Requirements: ${r.requirements.join(', ')}`);
+  if ((r.badge === 'GATED' || r.badge === 'PARTIAL') && r.requirements.length > 0) {
+    lines.push(`   ↳ ⚠ Requirements: ${trunc(r.requirements.join(', '), 80)}`);
+  } else if (r.badge === 'OPEN' && r.objective) {
+    lines.push(`   ↳ ${trunc(r.objective, 80)}`);
+  }
   return lines.join('\n');
 }
 
@@ -33,12 +49,8 @@ function formatRecord(r) {
  * @returns {string}
  */
 export function renderLog(records, { quiet = false } = {}) {
-  const parts = [];
-  if (!quiet) parts.push(c.blue(`searching · duckduckgo · hackathon ${new Date().getFullYear()} · ${new Date().toISOString().slice(0, 10)}`));
-  parts.push('');
-  parts.push(...records.map(formatRecord));
-  parts.push('');
-  parts.push(renderSummaryLine(records));
+  const parts = ['', ...records.map(formatRecord), ''];
+  if (!quiet) parts.push(renderSummaryLine(records));
   return parts.join('\n');
 }
 
@@ -56,8 +68,8 @@ export function renderJson(records) {
  * @returns {string}
  */
 export function renderSummaryLine(records) {
-  const open = records.filter(r => r.badge === 'OPEN').length;
-  const gated = records.filter(r => r.badge === 'GATED').length;
+  const open    = records.filter(r => r.badge === 'OPEN').length;
+  const gated   = records.filter(r => r.badge === 'GATED').length;
   const partial = records.filter(r => r.badge === 'PARTIAL').length;
   return `${records.length} found · ${open} open to all · ${gated} gated · ${partial} partial · cached 1h · ${c.blue('--no-cache')} to refresh`;
 }
