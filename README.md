@@ -12,7 +12,17 @@
 
 ---
 
-<!-- Terminal screenshots: capture after first publish using the terminal-screenshot skill -->
+<div align="center">
+
+<img src=".github/media/demo-version.svg" width="480" alt="hackathon-radar --version printing 0.1.0" />
+
+<img src=".github/media/demo-live.svg" width="720" alt="hackathon-radar --location Asia --open-only showing a live result with OPEN TO ALL badge" />
+
+<img src=".github/media/demo-validation.svg" width="720" alt="hackathon-radar showing friendly validation errors for unknown location and bad flag values" />
+
+</div>
+
+---
 
 ## Why
 
