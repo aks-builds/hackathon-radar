@@ -14,7 +14,7 @@ export function validateFlags(flags) {
   const errors = [];
 
   if (flags.location) {
-    if (!VALID_LOCATIONS.has(flags.location.toLowerCase())) {
+    if (!VALID_LOCATIONS.has(flags.location.toLowerCase().replace(/\s+/g, ''))) {
       errors.push(
         `Unknown location "${flags.location}". Valid values: Asia, Europe, Americas, Africa, Oceania, Global, or a country name (e.g. India, Germany, USA).`
       );

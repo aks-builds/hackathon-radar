@@ -73,7 +73,8 @@ jobs:
           if [ "${{ steps.meta.outputs.tag }}" = "alpha" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
+          printf '%s' "${{ steps.notes.outputs.notes }}" > /tmp/release-notes.md
           gh release create "v${{ steps.meta.outputs.version }}" \
             --title "v${{ steps.meta.outputs.version }}" \
-            --notes "${{ steps.notes.outputs.notes }}" \
+            --notes-file /tmp/release-notes.md \
             $PRERELEASE_FLAG

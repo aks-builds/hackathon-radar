@@ -82,6 +82,13 @@ describe('validateFlags', () => {
     expect(validateFlags({ ...base, location: 'USA' }).ok).toBe(true);
   });
 
+  it('accepts multi-word country names with spaces', () => {
+    expect(validateFlags({ ...base, location: 'New Zealand' }).ok).toBe(true);
+    expect(validateFlags({ ...base, location: 'South Korea' }).ok).toBe(true);
+    expect(validateFlags({ ...base, location: 'Saudi Arabia' }).ok).toBe(true);
+    expect(validateFlags({ ...base, location: 'South Africa' }).ok).toBe(true);
+  });
+
   it('accepts any department value — no validation', () => {
     expect(validateFlags({ ...base, department: 'climate tech' }).ok).toBe(true);
     expect(validateFlags({ ...base, department: 'xyz123' }).ok).toBe(true);
