@@ -1,6 +1,6 @@
 {
   "name": "hackathon-radar",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Find active hackathons worldwide with eligibility badges — CLI + agent skill",
   "type": "module",
   "bin": {
