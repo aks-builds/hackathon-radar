@@ -25,7 +25,7 @@ function badgeLabel(badge) {
     case 'OPEN':    return c.green('OPEN TO ALL');
     case 'GATED':   return c.red('GATED');
     case 'PARTIAL': return c.yellow('PARTIAL');
-    default:        return 'UNKNOWN';
+    default:        return c.dim('UNKNOWN');
   }
 }
 
@@ -41,7 +41,8 @@ function formatRecord(r) {
   } else if (r.badge === 'OPEN' && r.objective) {
     lines.push(`   ↳ ${trunc(r.objective, 80)}`);
   }
-  return lines.join('\n');
+  const formatted = lines.join('\n');
+  return r.badge === 'UNKNOWN' ? c.dim(formatted) : formatted;
 }
 
 /**

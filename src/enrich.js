@@ -20,6 +20,8 @@ function extractText($, selectors) {
   return null;
 }
 
+const GENERIC_HOSTS = ['secure.devpost.com', 'devpost.com/users', 'mlh.io/users'];
+
 function extractJoinUrl($, pageUrl) {
   const linkTexts = ['register', 'join', 'apply', 'sign up', 'participate'];
   let found = null;
@@ -28,7 +30,9 @@ function extractJoinUrl($, pageUrl) {
     const text = $(el).text().toLowerCase();
     if (href && linkTexts.some(t => text.includes(t))) {
       try {
-        found = new URL(href, pageUrl).toString();
+        const resolved = new URL(href, pageUrl).toString();
+        if (GENERIC_HOSTS.some(h => resolved.includes(h))) return; // skip site-wide auth pages
+        found = resolved;
         return false;
       } catch { /* skip malformed hrefs */ }
     }

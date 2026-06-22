@@ -28,7 +28,12 @@ function mapDevpostResult(h) {
     publishedAt: null,
     deadlineAt: null,
     daysLeft: null,
-    prize: h.prize_amount ? `$${h.prize_amount}` : null,
+    prize: (() => {
+      if (!h.prize_amount) return null;
+      const s = String(h.prize_amount).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+      if (s === '' || /^[^\d]*0[^\d]*$/.test(s)) return null; // "$0", "₹ 0", "€0", etc.
+      return s;
+    })(),
     objective: null,
     eligibilityRaw: null,
     badge: 'UNKNOWN',
