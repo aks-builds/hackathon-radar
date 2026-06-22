@@ -98,12 +98,63 @@ async function fromMLH() {
   return entries.length ? entries : null;
 }
 
+function mapGitHubResult(repo) {
+  const desc = repo.description
+    ? repo.description.replace(/\s+/g, ' ').trim().slice(0, 80)
+    : null;
+  return {
+    name: repo.name,
+    url: repo.html_url,
+    joinUrl: repo.html_url,
+    publishedAt: repo.updated_at?.slice(0, 10) ?? null,
+    deadlineAt: null,
+    daysLeft: null,
+    prize: null,
+    objective: desc,
+    eligibilityRaw: null,
+    badge: 'UNKNOWN',
+    requirements: [],
+    source: 'github',
+    pageVisited: false,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+async function fromGitHub(year, location, department) {
+  const terms = ['hackathon', String(year), location, department].filter(Boolean);
+  const q = terms.map(t => `topic:${encodeURIComponent(t)}`).join('+');
+  const res = await fetch(
+    `https://api.github.com/search/repositories?q=${q}&sort=updated&per_page=10`,
+    {
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'hackathon-radar/0.4.0',
+      },
+      signal: AbortSignal.timeout(10000),
+    }
+  );
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  const data = await res.json();
+  return (data.items ?? []).map(mapGitHubResult);
+}
+
 /**
  * @param {number} year
- * @param {{ location?: string, department?: string }} [opts]
+ * @param {{ location?: string, department?: string, platform?: string }} [opts]
  * @returns {Promise<object[]>}
  */
-export async function searchHackathons(year, { location, department } = {}) {
+export async function searchHackathons(year, { location, department, platform = 'web' } = {}) {
+  if (platform === 'devpost') {
+    try { return (await fromDevpost()) ?? []; } catch { return []; }
+  }
+  if (platform === 'mlh') {
+    try { return (await fromMLH()) ?? []; } catch { return []; }
+  }
+  if (platform === 'github') {
+    try { return (await fromGitHub(year, location, department)) ?? []; } catch { return []; }
+  }
+
+  // platform === 'web': existing DDG → Devpost → MLH fallback chain
   try {
     const results = await fromDDG(year, location, department);
     if (results) return results;

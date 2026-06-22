@@ -1,3 +1,5 @@
+const VALID_PLATFORMS = new Set(['web', 'devpost', 'mlh', 'github']);
+
 const VALID_LOCATIONS = new Set([
   'asia', 'europe', 'americas', 'africa', 'oceania', 'global',
   'india', 'usa', 'uk', 'germany', 'canada', 'australia', 'japan', 'brazil',
@@ -43,6 +45,15 @@ export function validateFlags(flags) {
 
   if (flags.watch && flags.json) {
     errors.push('--watch and --json cannot be used together.');
+  }
+
+  if (flags.platform) {
+    if (!VALID_PLATFORMS.has(flags.platform)) {
+      errors.push(`Unknown platform "${flags.platform}". Valid values: web, devpost, mlh, github.`);
+    }
+    if (flags.platform === 'github' && Number(flags.limit) > 10) {
+      errors.push('--platform github supports a maximum of 10 results (--limit 10 or less).');
+    }
   }
 
   return { ok: errors.length === 0, errors };

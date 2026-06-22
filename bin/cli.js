@@ -7,6 +7,7 @@ import { readCache, writeCache, isCacheValid, diffResults } from '../src/cache.j
 import { renderLog, renderJson } from '../src/output.js';
 import { validateFlags } from '../src/validate.js';
 import { createProgress } from '../src/progress.js';
+import { runWizard } from '../src/wizard.js';
 
 const OPTION_DEFS = {
   json:        { type: 'boolean', default: false },
@@ -19,11 +20,12 @@ const OPTION_DEFS = {
   version:     { type: 'boolean', default: false },
   location:    { type: 'string',  default: '' },
   department:  { type: 'string',  default: '' },
+  platform:    { type: 'string',  default: '' },
 };
 
-let flags;
+let flags, tokens;
 try {
-  ({ values: flags } = parseArgs({ options: OPTION_DEFS, strict: true }));
+  ({ values: flags, tokens } = parseArgs({ options: OPTION_DEFS, strict: true, allowPositionals: true, tokens: true }));
 } catch (err) {
   const msg = err.message.split('. To specify')[0];
   process.stderr.write(msg + '\n');
@@ -46,10 +48,18 @@ if (!validation.ok) {
   process.exit(2);
 }
 
+// Launch wizard when no explicit flags were given and stdin is a TTY
+const hasExplicitFlags = tokens.some(t => t.kind === 'option' && t.name !== 'version');
+if (!hasExplicitFlags && process.stdin.isTTY) {
+  const wizardFlags = await runWizard();
+  Object.assign(flags, wizardFlags);
+}
+
 const minDays = parseInt(flags['min-days'], 10);
 const limit = parseInt(flags.limit, 10);
 const location = flags.location || undefined;
 const department = flags.department || undefined;
+const platform = flags.platform || 'web';
 
 const progress = createProgress({
   quiet: flags.quiet,
@@ -76,14 +86,11 @@ export async function runPipeline({ noCache = false } = {}) {
     }
   }
 
-  const queryDesc = [
-    `hackathon ${year}`,
-    location,
-    department,
-  ].filter(Boolean).join(' · ');
-  progress.update(`searching duckduckgo · ${queryDesc}…`);
+  const sourceName = platform === 'web' ? 'duckduckgo' : platform;
+  const queryDesc = [`hackathon ${year}`, location, department].filter(Boolean).join(' · ');
+  progress.update(`searching ${sourceName} · ${queryDesc}…`);
 
-  const raw = await searchHackathons(year, { location, department });
+  const raw = await searchHackathons(year, { location, department, platform });
   if (!raw.length) {
     const stale = await readCache();
     if (stale?.records?.length) {
