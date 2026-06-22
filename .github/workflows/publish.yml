@@ -1,0 +1,79 @@
+name: Publish
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Extract version and check for existing tag
+        id: meta
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if git tag | grep -q "^v$VERSION$"; then
+            echo "Tag v$VERSION already exists — aborting."
+            exit 1
+          fi
+          if echo "$VERSION" | grep -q "alpha"; then
+            echo "tag=alpha" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure git
+        run: |
+          git config user.name "aks-builds"
+          git config user.email "its.aks@outlook.com"
+
+      - name: Tag and push
+        run: |
+          git tag "v${{ steps.meta.outputs.version }}"
+          git push origin "v${{ steps.meta.outputs.version }}"
+
+      - name: Publish to npm
+        run: npm publish --access public --tag ${{ steps.meta.outputs.tag }} --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Extract CHANGELOG notes
+        id: notes
+        run: |
+          VERSION=${{ steps.meta.outputs.version }}
+          NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "${{ steps.meta.outputs.tag }}" = "alpha" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "v${{ steps.meta.outputs.version }}" \
+            --title "v${{ steps.meta.outputs.version }}" \
+            --notes "${{ steps.notes.outputs.notes }}" \
+            $PRERELEASE_FLAG

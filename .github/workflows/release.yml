@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options: [patch, minor, major, prerelease]
+      preid:
+        description: 'Pre-release identifier (only for prerelease bump)'
+        required: false
+        default: 'alpha'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RELEASE_PR_PAT }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm test
+
+      - name: Configure git
+        run: |
+          git config user.name "aks-builds"
+          git config user.email "its.aks@outlook.com"
+
+      - name: Bump version
+        id: bump
+        run: |
+          if [ "${{ github.event.inputs.bump }}" = "prerelease" ]; then
+            npm version prerelease --preid=${{ github.event.inputs.preid }} --no-git-tag-version
+          else
+            npm version ${{ github.event.inputs.bump }} --no-git-tag-version
+          fi
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Roll CHANGELOG
+        run: |
+          VERSION=${{ steps.bump.outputs.version }}
+          DATE=$(date -u +%Y-%m-%d)
+          sed -i "s/## \[Unreleased\]/## [Unreleased]\n\n## [$VERSION] - $DATE/" CHANGELOG.md
+
+      - name: Commit and push release branch
+        run: |
+          BRANCH="release/${{ steps.bump.outputs.version }}"
+          git checkout -b "$BRANCH"
+          git add package.json CHANGELOG.md
+          git commit -m "chore: release v${{ steps.bump.outputs.version }}"
+          git push origin "$BRANCH"
+
+      - name: Open PR with auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_PAT }}
+        run: |
+          gh pr create \
+            --title "chore: release v${{ steps.bump.outputs.version }}" \
+            --body "Automated release PR for v${{ steps.bump.outputs.version }}" \
+            --base main \
+            --head "release/${{ steps.bump.outputs.version }}"
+          gh pr merge --auto --squash
