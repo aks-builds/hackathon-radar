@@ -70,4 +70,19 @@ describe('enrichRecord', () => {
     expect(result.pageVisited).toBe(true);
     expect(result.badge).toBe('UNKNOWN');
   });
+
+  it('truncates long text fields to configured limits', async () => {
+    const longHtml = `<!DOCTYPE html><html><head>
+      <meta name="description" content="${'Build '.repeat(50)}">
+    </head><body>
+      <span class="prize-amount">${'$' + '0'.repeat(200)}</span>
+      <div class="eligibility">${'open to all '.repeat(50)}</div>
+    </body></html>`;
+    fetch.mockResolvedValueOnce({ ok: true, text: async () => longHtml });
+    const record = { url: 'https://example.com', prize: null, objective: null, eligibilityRaw: null, joinUrl: null };
+    const result = await enrichRecord(record);
+    expect(result.prize.length).toBeLessThanOrEqual(83); // 80 chars + '…'
+    expect(result.objective.length).toBeLessThanOrEqual(83);
+    expect(result.eligibilityRaw.length).toBeLessThanOrEqual(153); // 150 chars + '…'
+  });
 });

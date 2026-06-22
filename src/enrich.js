@@ -7,6 +7,11 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function clean(text, maxLen = 150) {
+  const s = text.replace(/\s+/g, ' ').trim();
+  return s.length > maxLen ? s.slice(0, maxLen) + '…' : s;
+}
+
 function extractText($, selectors) {
   for (const sel of selectors) {
     const text = $(sel).first().text().trim();
@@ -24,7 +29,7 @@ function extractJoinUrl($, pageUrl) {
     if (href && linkTexts.some(t => text.includes(t))) {
       try {
         found = new URL(href, pageUrl).toString();
-        return false; // break
+        return false;
       } catch { /* skip malformed hrefs */ }
     }
   });
@@ -45,7 +50,7 @@ export async function enrichRecord(record) {
   let html;
   try {
     const res = await fetch(record.url, {
-      headers: { 'User-Agent': 'hackathon-radar/0.1.0 (+https://github.com/aks-builds/hackathon-radar)' },
+      headers: { 'User-Agent': 'hackathon-radar/0.2.0 (+https://github.com/aks-builds/hackathon-radar)' },
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -56,21 +61,22 @@ export async function enrichRecord(record) {
 
   const $ = cheerio.load(html);
 
-  const eligibilityRaw = extractText($, [
-    '.eligibility', '.eligibility-info', '[class*="eligib"]',
-    'section:contains("Who Can")', 'section:contains("Eligib")',
-    'p:contains("open to all")', 'p:contains("students only")',
-  ]) ?? record.eligibilityRaw;
+  const eligibilityRaw = clean(
+    extractText($, ['.eligibility', '.eligibility-info', '[class*="eligib"]']) ?? record.eligibilityRaw ?? '',
+    150
+  ) || null;
 
-  const prize = extractText($, [
-    '.prize', '.prize-amount', '[class*="prize"]',
-    'p:contains("prize")', 'span:contains("$")',
-  ]) ?? record.prize;
+  const prize = clean(
+    extractText($, ['.prize-amount', '[data-prize]']) ?? record.prize ?? '',
+    80
+  ) || null;
 
-  const objective =
-    extractText($, ['.about p', '.description p', 'section:contains("About") p']) ??
-    ($('meta[name="description"]').attr('content')?.trim() || null) ??
-    record.objective;
+  const objective = clean(
+    $('meta[name="description"]').attr('content') ||
+    extractText($, ['article p:first-of-type', 'main p:first-of-type']) ||
+    record.objective || '',
+    80
+  ) || null;
 
   const joinUrl = extractJoinUrl($, record.url) ?? record.joinUrl;
 
