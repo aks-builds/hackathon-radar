@@ -64,8 +64,11 @@ function extractPrize(text) {
   return match ? match[0] : null;
 }
 
-async function fromDDG(year) {
-  const { results } = await ddgSearch(`hackathon ${year}`, { safeSearch: SafeSearchType.OFF });
+async function fromDDG(year, location, department) {
+  const parts = [`hackathon ${year}`];
+  if (location) parts.push(location);
+  if (department) parts.push(department);
+  const { results } = await ddgSearch(parts.join(' '), { safeSearch: SafeSearchType.OFF });
   if (!results?.length) return null;
   return results.map(mapDDGResult);
 }
@@ -92,11 +95,12 @@ async function fromMLH() {
 
 /**
  * @param {number} year
+ * @param {{ location?: string, department?: string }} [opts]
  * @returns {Promise<object[]>}
  */
-export async function searchHackathons(year) {
+export async function searchHackathons(year, { location, department } = {}) {
   try {
-    const results = await fromDDG(year);
+    const results = await fromDDG(year, location, department);
     if (results) return results;
   } catch { /* fall through */ }
 

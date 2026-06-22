@@ -63,4 +63,48 @@ describe('searchHackathons', () => {
     const records = await searchHackathons(2026);
     expect(records).toHaveLength(0);
   });
+
+  it('appends location to DDG query when provided', async () => {
+    ddgSearch.mockResolvedValueOnce({
+      results: [
+        { title: 'Asia Hack', url: 'https://asiahack.devpost.com', description: 'Open in Asia.' },
+      ],
+    });
+    await searchHackathons(2026, { location: 'Asia' });
+    expect(ddgSearch).toHaveBeenCalledWith(
+      expect.stringContaining('Asia'),
+      expect.any(Object)
+    );
+  });
+
+  it('appends department to DDG query when provided', async () => {
+    ddgSearch.mockResolvedValueOnce({
+      results: [
+        { title: 'Fintech Hack', url: 'https://fintechhack.devpost.com', description: 'Build fintech.' },
+      ],
+    });
+    await searchHackathons(2026, { department: 'fintech' });
+    expect(ddgSearch).toHaveBeenCalledWith(
+      expect.stringContaining('fintech'),
+      expect.any(Object)
+    );
+  });
+
+  it('builds query "hackathon 2026 India IT" with both location and department', async () => {
+    ddgSearch.mockResolvedValueOnce({ results: [] });
+    fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hackathons: [] }) })
+      .mockResolvedValueOnce({ ok: true, text: async () => '<urlset></urlset>' });
+    await searchHackathons(2026, { location: 'India', department: 'IT' });
+    expect(ddgSearch).toHaveBeenCalledWith('hackathon 2026 India IT', expect.any(Object));
+  });
+
+  it('uses plain year query when no opts given', async () => {
+    ddgSearch.mockResolvedValueOnce({ results: [] });
+    fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hackathons: [] }) })
+      .mockResolvedValueOnce({ ok: true, text: async () => '<urlset></urlset>' });
+    await searchHackathons(2026);
+    expect(ddgSearch).toHaveBeenCalledWith('hackathon 2026', expect.any(Object));
+  });
 });
