@@ -5,20 +5,29 @@ import { filterRecords, deduplicateByUrl } from '../src/filter.js';
 import { enrichRecord } from '../src/enrich.js';
 import { readCache, writeCache, isCacheValid, diffResults } from '../src/cache.js';
 import { renderLog, renderJson } from '../src/output.js';
+import { validateFlags } from '../src/validate.js';
 
-const { values: flags } = parseArgs({
-  options: {
-    json:         { type: 'boolean', default: false },
-    'open-only':  { type: 'boolean', default: false },
-    'min-days':   { type: 'string',  default: '3' },
-    limit:        { type: 'string',  default: '20' },
-    watch:        { type: 'string',  default: '' },
-    'no-cache':   { type: 'boolean', default: false },
-    quiet:        { type: 'boolean', default: false },
-    version:      { type: 'boolean', default: false },
-  },
-  strict: false,
-});
+const OPTION_DEFS = {
+  json:        { type: 'boolean', default: false },
+  'open-only': { type: 'boolean', default: false },
+  'min-days':  { type: 'string',  default: '3' },
+  limit:       { type: 'string',  default: '20' },
+  watch:       { type: 'string',  default: '' },
+  'no-cache':  { type: 'boolean', default: false },
+  quiet:       { type: 'boolean', default: false },
+  version:     { type: 'boolean', default: false },
+  location:    { type: 'string',  default: '' },
+  department:  { type: 'string',  default: '' },
+};
+
+let flags;
+try {
+  ({ values: flags } = parseArgs({ options: OPTION_DEFS, strict: true }));
+} catch (err) {
+  const msg = err.message.split('. To specify')[0];
+  process.stderr.write(msg + '\n');
+  process.exit(2);
+}
 
 if (flags.version) {
   const { createRequire } = await import('node:module');
@@ -28,8 +37,18 @@ if (flags.version) {
   process.exit(0);
 }
 
-const minDays = parseInt(flags['min-days'], 10) || 3;
-const limit = parseInt(flags.limit, 10) || 20;
+const validation = validateFlags(flags);
+if (!validation.ok) {
+  for (const msg of validation.errors) {
+    process.stderr.write(msg + '\n');
+  }
+  process.exit(2);
+}
+
+const minDays = parseInt(flags['min-days'], 10);
+const limit = parseInt(flags.limit, 10);
+const location = flags.location || undefined;
+const department = flags.department || undefined;
 
 function parseWatchInterval(str) {
   const match = str.match(/^(\d+)(m|h)$/);
@@ -42,7 +61,6 @@ const watchInterval = flags.watch ? parseWatchInterval(flags.watch) : null;
 export async function runPipeline({ noCache = false } = {}) {
   const year = new Date().getFullYear();
 
-  // Cache check
   if (!noCache) {
     const cached = await readCache();
     if (cached && isCacheValid(cached.fetchedAt)) {
@@ -50,28 +68,21 @@ export async function runPipeline({ noCache = false } = {}) {
     }
   }
 
-  // Search
-  const raw = await searchHackathons(year);
+  const raw = await searchHackathons(year, { location, department });
   if (!raw.length) {
-    // All live sources failed — serve stale cache as last resort
     const stale = await readCache();
     if (stale?.records?.length) {
-      process.stderr.write('hackathon-radar: all sources failed — serving stale cache\n');
+      process.stderr.write('All sources failed — serving stale cache.\n');
       return filterRecords(stale.records, { minDays }).slice(0, limit);
     }
     return [];
   }
 
-  // Filter + dedup
   const filtered = deduplicateByUrl(filterRecords(raw, { minDays }));
-
-  // Enrich (fetch pages sequentially with polite delay)
   const enriched = [];
   for (const record of filtered.slice(0, limit)) {
     enriched.push(await enrichRecord(record));
   }
-
-  // Cache write
   await writeCache(enriched);
   return enriched;
 }
@@ -80,16 +91,16 @@ async function once() {
   const records = await runPipeline({ noCache: flags['no-cache'] });
 
   if (!records.length) {
-    console.error('hackathon-radar: no results found — all sources failed or returned 0 active hackathons');
-    process.exit(1);
+    process.stderr.write('No hackathons found matching your criteria.\n');
+    process.exit(0);
   }
 
   const shown = flags['open-only'] ? records.filter(r => r.badge === 'OPEN') : records;
 
   if (!shown.length && flags['open-only']) {
     if (flags.json) process.stdout.write('[]\n');
-    process.stderr.write('hackathon-radar: no open-to-all hackathons found in current results\n');
-    process.exit(0); // Not an error — just none that match the filter
+    process.stderr.write('No open-to-all hackathons found in current results.\n');
+    process.exit(0);
   }
 
   if (flags.json) {
@@ -100,10 +111,6 @@ async function once() {
 }
 
 async function watch(intervalMs) {
-  if (flags.json) {
-    process.stderr.write('hackathon-radar: --watch and --json are incompatible; use cron + --json for scripted polling\n');
-    process.exit(1);
-  }
   if (!flags.quiet) console.log(`hackathon-radar watching · polling every ${flags.watch} · Ctrl+C to stop\n`);
   let seenRecords = [];
 
@@ -112,7 +119,7 @@ async function watch(intervalMs) {
     const toShow = flags['open-only'] ? records.filter(r => r.badge === 'OPEN') : records;
 
     if (isFirst && !toShow.length) {
-      if (!flags.quiet) process.stderr.write('hackathon-radar: no results match current filters\n');
+      if (!flags.quiet) process.stderr.write('No results match current filters.\n');
     }
 
     if (isFirst) {
@@ -137,8 +144,13 @@ async function watch(intervalMs) {
   process.on('SIGINT', () => { clearInterval(timer); process.exit(0); });
 }
 
-if (watchInterval) {
-  await watch(watchInterval);
-} else {
-  await once();
+try {
+  if (watchInterval) {
+    await watch(watchInterval);
+  } else {
+    await once();
+  }
+} catch (err) {
+  process.stderr.write(`Something went wrong: ${err.message}\n`);
+  process.exit(1);
 }
