@@ -6,6 +6,7 @@ import { enrichRecord } from '../src/enrich.js';
 import { readCache, writeCache, isCacheValid, diffResults } from '../src/cache.js';
 import { renderLog, renderJson } from '../src/output.js';
 import { validateFlags } from '../src/validate.js';
+import { createProgress } from '../src/progress.js';
 
 const OPTION_DEFS = {
   json:        { type: 'boolean', default: false },
@@ -50,6 +51,11 @@ const limit = parseInt(flags.limit, 10);
 const location = flags.location || undefined;
 const department = flags.department || undefined;
 
+const progress = createProgress({
+  quiet: flags.quiet,
+  isTTY: process.stderr.isTTY ?? false,
+});
+
 function parseWatchInterval(str) {
   const match = str.match(/^(\d+)(m|h)$/);
   if (!match) return null;
@@ -61,6 +67,8 @@ const watchInterval = flags.watch ? parseWatchInterval(flags.watch) : null;
 export async function runPipeline({ noCache = false } = {}) {
   const year = new Date().getFullYear();
 
+  progress.update('checking sources…');
+
   if (!noCache) {
     const cached = await readCache();
     if (cached && isCacheValid(cached.fetchedAt)) {
@@ -68,10 +76,18 @@ export async function runPipeline({ noCache = false } = {}) {
     }
   }
 
+  const queryDesc = [
+    `hackathon ${year}`,
+    location,
+    department,
+  ].filter(Boolean).join(' · ');
+  progress.update(`searching duckduckgo · ${queryDesc}…`);
+
   const raw = await searchHackathons(year, { location, department });
   if (!raw.length) {
     const stale = await readCache();
     if (stale?.records?.length) {
+      progress.clear();
       process.stderr.write('All sources failed — serving stale cache.\n');
       return filterRecords(stale.records, { minDays }).slice(0, limit);
     }
@@ -79,16 +95,21 @@ export async function runPipeline({ noCache = false } = {}) {
   }
 
   const filtered = deduplicateByUrl(filterRecords(raw, { minDays }));
+  const toEnrich = filtered.slice(0, limit);
   const enriched = [];
-  for (const record of filtered.slice(0, limit)) {
-    enriched.push(await enrichRecord(record));
+  for (let i = 0; i < toEnrich.length; i++) {
+    progress.update(`enriching pages · ${i + 1}/${toEnrich.length}…`);
+    enriched.push(await enrichRecord(toEnrich[i]));
   }
+
   await writeCache(enriched);
   return enriched;
 }
 
 async function once() {
   const records = await runPipeline({ noCache: flags['no-cache'] });
+
+  progress.clear();
 
   if (!records.length) {
     process.stderr.write('No hackathons found matching your criteria.\n');
@@ -116,6 +137,7 @@ async function watch(intervalMs) {
 
   async function poll(isFirst) {
     const records = await runPipeline({ noCache: true });
+    progress.clear();
     const toShow = flags['open-only'] ? records.filter(r => r.badge === 'OPEN') : records;
 
     if (isFirst && !toShow.length) {
@@ -151,6 +173,7 @@ try {
     await once();
   }
 } catch (err) {
+  progress.clear();
   process.stderr.write(`Something went wrong: ${err.message}\n`);
   process.exit(1);
 }
