@@ -1,6 +1,6 @@
 {
   "name": "hackathon-radar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Find active hackathons worldwide with eligibility badges — CLI + agent skill",
   "type": "module",
   "bin": {
@@ -13,16 +13,29 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "files": ["bin/", "src/", "SKILL.md", "README.md"],
+  "files": [
+    "bin/",
+    "src/",
+    "SKILL.md",
+    "README.md"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/aks-builds/hackathon-radar.git"
   },
   "homepage": "https://github.com/aks-builds/hackathon-radar#readme",
-  "bugs": { "url": "https://github.com/aks-builds/hackathon-radar/issues" },
+  "bugs": {
+    "url": "https://github.com/aks-builds/hackathon-radar/issues"
+  },
   "author": "aks-builds",
-  "publishConfig": { "access": "public" },
-  "keywords": ["hackathon", "cli", "agent-skill"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hackathon",
+    "cli",
+    "agent-skill"
+  ],
   "license": "MIT",
   "dependencies": {
     "chalk": "^5.3.0",
