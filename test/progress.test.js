@@ -20,12 +20,12 @@ describe('createProgress', () => {
     write.mockRestore();
   });
 
-  it('writes spinner + message to stderr on first tick after update()', () => {
+  it('writes spinner + message to stderr immediately on update()', () => {
     vi.useFakeTimers();
     const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     const p = createProgress({ isTTY: true, quiet: false });
     p.update('searching…');
-    vi.advanceTimersByTime(80);
+    // first frame written immediately — no timer advance needed
     expect(write).toHaveBeenCalledWith(
       expect.stringMatching(/\r\x1b\[K.*searching…/)
     );
@@ -58,15 +58,17 @@ describe('createProgress', () => {
     write.mockRestore();
   });
 
-  it('done() with no message clears only, no extra write', () => {
+  it('done() with no message: spinner frame written immediately, then cleared', () => {
     vi.useFakeTimers();
     const calls = [];
     const write = vi.spyOn(process.stderr, 'write').mockImplementation((s) => { calls.push(s); return true; });
     const p = createProgress({ isTTY: true, quiet: false });
     p.update('running…');
     p.done();
+    // update() writes one frame immediately; done() clears the line; no extra message
+    expect(calls.some(s => s.includes('running…'))).toBe(true);
     expect(calls).toContain('\r\x1b[K');
-    expect(calls.filter(s => s !== '\r\x1b[K')).toHaveLength(0);
+    expect(calls.some(s => s !== '\r\x1b[K' && !s.includes('running…'))).toBe(false);
     write.mockRestore();
   });
 

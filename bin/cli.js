@@ -53,7 +53,7 @@ const department = flags.department || undefined;
 
 const progress = createProgress({
   quiet: flags.quiet,
-  isTTY: process.stderr.isTTY ?? false,
+  isTTY: !!(process.stderr.isTTY || process.stdout.isTTY),
 });
 
 function parseWatchInterval(str) {

@@ -25,6 +25,7 @@ export function createProgress({ quiet = false, isTTY = false } = {}) {
   return {
     update(msg) {
       currentMsg = msg;
+      tick();
       if (!timer) timer = setInterval(tick, 80);
     },
     done(msg) {

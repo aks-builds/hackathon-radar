@@ -7,7 +7,8 @@ const BADGE_ORDER = { OPEN: 0, PARTIAL: 1, GATED: 2, UNKNOWN: 3 };
 
 function trunc(text, max) {
   if (!text) return text;
-  return text.length > max ? text.slice(0, max) + '…' : text;
+  const s = text.replace(/\s+/g, ' ').trim();
+  return s.length > max ? s.slice(0, max) + '…' : s;
 }
 
 function badgeEmoji(badge) {
