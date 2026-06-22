@@ -53,7 +53,14 @@ describe('validateFlags', () => {
   it('rejects --watch + --json combo', () => {
     const r = validateFlags({ ...base, watch: '1h', json: true });
     expect(r.ok).toBe(false);
-    expect(r.errors[0]).toMatch(/--watch and --json cannot be used together/);
+    expect(r.errors.some(e => /--watch and --json cannot be used together/.test(e))).toBe(true);
+  });
+
+  it('collects combo error even when watch format is also invalid', () => {
+    const r = validateFlags({ ...base, watch: '1d', json: true });
+    expect(r.ok).toBe(false);
+    expect(r.errors.some(e => /--watch and --json/.test(e))).toBe(true);
+    expect(r.errors.some(e => /--watch must be a duration/.test(e))).toBe(true);
   });
 
   it('rejects unknown location', () => {
