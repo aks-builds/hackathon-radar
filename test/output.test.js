@@ -100,6 +100,20 @@ describe('renderLog', () => {
     const out = renderLog([makeRecord({ badge: 'OPEN', eligibilityRaw: 'UNIQUE_ELIG_STRING_12345' })], { quiet: true });
     expect(out).not.toContain('UNIQUE_ELIG_STRING_12345');
   });
+
+  it('always prints badge legend as first non-empty line', () => {
+    const out = renderLog([makeRecord()], { quiet: false });
+    const lines = out.split('\n').filter(l => l.trim());
+    expect(lines[0]).toContain('🟢 open to all');
+    expect(lines[0]).toContain('🔴 gated');
+    expect(lines[0]).toContain('🟡 partial');
+    expect(lines[0]).toContain('⚪ unknown');
+  });
+
+  it('prints badge legend even when quiet is true', () => {
+    const out = renderLog([makeRecord()], { quiet: true });
+    expect(out).toContain('🟢 open to all');
+  });
 });
 
 describe('renderJson', () => {

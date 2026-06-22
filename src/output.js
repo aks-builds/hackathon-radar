@@ -51,7 +51,8 @@ function formatRecord(r) {
  * @returns {string}
  */
 export function renderLog(records, { quiet = false } = {}) {
-  const parts = ['', ...records.map(formatRecord), ''];
+  const legend = c.dim('Badges:  🟢 open to all  🔴 gated (age/KYC/invite)  🟡 partial (team/exp)  ⚪ unknown');
+  const parts = [legend, '', ...records.map(formatRecord), ''];
   if (!quiet) parts.push(renderSummaryLine(records));
   return parts.join('\n');
 }
