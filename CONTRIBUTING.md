@@ -18,7 +18,7 @@ npm test             # run once
 npm run test:watch   # re-run on file change
 ```
 
-All 8 test files must pass before opening a PR.
+All 9 test files must pass before opening a PR.
 
 ## TDD flow
 
